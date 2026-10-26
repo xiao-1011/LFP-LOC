@@ -58,6 +58,14 @@ To skip generating the report and extract just the cluster labels, simply skip p
 
 Report generation (toggled by passing the `save_report_dir` argument) is required when providing ap, ml, and dv coordinates in order to save the plot of the probe overlapped to the atlas.
 
+#### Line noise and referencing
+
+LFP-LOC only band-pass filters the traces (1-300 Hz) before computing the power spectral features, so mains noise (50/60 Hz) is counted in the Gamma feature. It can be removed with a zero-phase notch filter by passing `notch_freq` (e.g. `notch_freq=50`; a list such as `[50, 100]` is also accepted) and optionally `notch_q` (default 50). The notch is applied after the Common Average Reference (`do_car=True`), which already removes most noise shared across channels.
+
+~~~python
+cluster_labels = loc.run(do_car=True, notch_freq=50)
+~~~
+
 #### Atlas
 
 Any atlas included with brainglobe-atlasapi should work by default. The atlas used for running the analyses and creating the plots included in the paper is `kim_mouse_isotropic_20um` (also the default parameter). Testing was only performed on the 20um version of this atlas, so changing atlas is highly experimental.

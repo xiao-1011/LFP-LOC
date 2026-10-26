@@ -18,7 +18,7 @@ from sklearn.preprocessing import StandardScaler
 from spikeinterface.core import BaseRecording
 
 from .plotting import plot_cluster_labels, plot_clusters_on_probe, plot_coordinates_on_atlas, plot_dbscan, plot_dendogram, plot_evaluation_matrix, plot_feature_grid_maps, plot_pca, plot_probe_on_atlas, plot_selected_features
-from .utils import bandpass_filter, build_border_image, cluster_color_map_for_labels, compute_psd, get_probe_properties, get_relabeled_atlas, remap_labels
+from .utils import bandpass_filter, build_border_image, cluster_color_map_for_labels, compute_psd, get_probe_properties, get_relabeled_atlas, notch_filter, remap_labels
 
 
 try:
@@ -110,6 +110,8 @@ class Lfploc:
             end_time : float = 30.0,
             save_report_dir : Path | str = None,
             do_car : bool = False,
+            notch_freq : float | list[float] = None,
+            notch_q : float = 50.0,
             z_score_threshold : float = 2.5,
             window_size_outlier_removal : int = 20,
             window_size_smoothening : int = 8,
@@ -139,6 +141,11 @@ class Lfploc:
             Path to directory where to save plots generated during analysis
         do_car : bool = False
             Apply Common Reference Average
+        notch_freq : float | list[float] = None
+            Frequency (or list of frequencies) in Hz to remove with a zero-phase notch filter before computing
+            the power spectral features, e.g. 50 or 60 for mains line noise. Applied after CAR. Default None (disabled).
+        notch_q : float = 50.0
+            Quality factor of the notch filter (bandwidth = notch_freq / notch_q).
         z_score_threshold : float = 2.5
             Channels with normalized psd features above this z-score-threshold get labeled as noise and discarded.
         window_size_outlier_removal : int = 20
@@ -182,6 +189,9 @@ class Lfploc:
             traces = traces[self.new_order]
         else:
             traces = self.rec.get_traces(start_frame=start_time*fs, end_frame=end_time*fs, return_in_uV=True).T
+
+        if notch_freq is not None:
+            traces = notch_filter(traces, notch_freq, fs, q=notch_q)
 
         psd_features = self.get_psd_features(traces)
 
@@ -288,6 +298,8 @@ class Lfploc:
         'end_time': End time of segment to calculate power spectral features on. Default 30.
         'save_report_dir': Directory to save a report containg every plots generated during each step. Default None (disabled).
         'do_car': Apply Common Average Reference.
+        'notch_freq': Frequency (or list of frequencies) in Hz removed with a zero-phase notch filter before feature extraction, e.g. 50 or 60 for mains noise. Applied after CAR. Default None (disabled).
+        'notch_q': Quality factor of the notch filter (bandwidth = notch_freq / notch_q). Default 50.
         'z_score_threshold': Channels with normalized psd features above this z-score-threshold get labeled as noise and discarded.
         'window_size_outlier_removal': Number of electrodes to consider in window when computing z-score for identifying channels to discard. Recommended to keep default, but can be useful to change if working with unique probe geometries.
         'window_size_smoothening': Number of electrodes to consider in window when smoothening. Recommended to keep default, but can be useful to change if working with unique probe geometries.

@@ -5,7 +5,7 @@ import os
 
 from pathlib import Path
 from scipy.interpolate import griddata
-from scipy.signal import butter, filtfilt, welch
+from scipy.signal import butter, filtfilt, iirnotch, welch
 
 
 def bandpass_filter(
@@ -22,6 +22,23 @@ def bandpass_filter(
     high = highcut / nyquist
     b, a = butter(order, [low, high], btype='band')
     y = filtfilt(b, a, data, axis=1)
+    return y
+
+
+def notch_filter(
+        data : np.ndarray,
+        notch_freq : float | list[float],
+        fs : int,
+        q : float = 50.0
+) -> np.ndarray:
+
+    # zero-phase IIR notch at each requested frequency (e.g. 50 or 60 Hz mains noise)
+    y = data
+    for f0 in np.atleast_1d(notch_freq):
+        if not 0 < f0 < fs / 2:
+            raise ValueError(f"Notch frequency {f0} Hz must be between 0 and the Nyquist frequency ({fs / 2} Hz)")
+        b, a = iirnotch(f0, q, fs)
+        y = filtfilt(b, a, y, axis=1)
     return y
 
 
